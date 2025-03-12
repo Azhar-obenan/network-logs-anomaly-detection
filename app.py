@@ -6,7 +6,9 @@ import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 # Load dataset
-df = pd.read_csv("/Users/mac/Documents/BD-Anomaly-detection/network-logs-anomaly-detection/logs.csv")
+# df = pd.read_csv("/Users/mac/Documents/BD-Anomaly-detection/network-logs-anomaly-detection/logs.csv")
+url = "https://docs.google.com/spreadsheets/d/1LO_OvvWHuiAN3Moy2bhbiZOP9PBB0-TIF8XrNcGdCvU/export?format=csv"
+df = pd.read_csv(url)
 df = df.dropna()
 
 # Encode categorical variables
