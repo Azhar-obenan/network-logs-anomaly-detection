@@ -3,13 +3,12 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import os
-import joblib  # For saving and loading the model
-import gdown  # For downloading Google Sheets as CSV
-import re  # For extracting file IDs from URLs
+import joblib 
+import gdown  
+import re  
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import IsolationForest
 
-# Function to extract file ID from a Google Drive link
 def extract_drive_id(url):
     match = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
     return match.group(1) if match else None
@@ -34,7 +33,6 @@ class IsolationForestTorch(nn.Module):
     def predict(self, x):
         return torch.tensor(self.model.predict(x), dtype=torch.int8)
 
-# Function to test a batch of inputs from a CSV file
 def test_from_csv(test_file, model, label_encoders):
     test_df = pd.read_csv(test_file)
     
@@ -48,15 +46,12 @@ def test_from_csv(test_file, model, label_encoders):
         single_input = [row['host.ip'], row['host.name'], row['log.level'], row['log.level_num']]
         result = test_single_input(single_input, model, label_encoders)
         
-        # Assign label based on anomaly detection
         test_df.at[index, 'label'] = -1 if result['anomaly_label'] == 'Anomaly' else 1
 
-    # Save the updated test file with labels
     output_file = "test_data_with_labels.csv"
     test_df.to_csv(output_file, index=False)
     return output_file
 
-# Function to test a single input against the trained model
 def test_single_input(single_input, model, label_encoders):
     new_df = pd.DataFrame([single_input], columns=['host.ip', 'host.name', 'log.level', 'log.level_num'])
 
@@ -66,7 +61,6 @@ def test_single_input(single_input, model, label_encoders):
 
     unseen_flag = False  
 
-    # Encode categorical features
     for col in ['host.ip', 'host.name', 'log.level']:
         if col in label_encoders:
             try:
@@ -79,7 +73,6 @@ def test_single_input(single_input, model, label_encoders):
 
     input_tensor = torch.tensor(new_df.values, dtype=torch.float32)
 
-    # Get anomaly score and label
     anomaly_score = model.forward(input_tensor)
     anomaly_label = model.predict(input_tensor)
 
@@ -88,11 +81,9 @@ def test_single_input(single_input, model, label_encoders):
         'anomaly_label': 'Anomaly' if anomaly_label[0].item() == -1 else 'Normal'
     }
 
-# Streamlit UI
 st.title("🚀 Anomaly Detection with Isolation Forest")
 st.write("Upload Google Drive links for Train & Test CSV files")
 
-# User input for Google Sheets links
 train_link = st.text_input("Enter the Google Drive link for the TRAIN file:", "")
 test_link = st.text_input("Enter the Google Drive link for the TEST file:", "")
 
@@ -108,14 +99,11 @@ if st.button("Run Model"):
         else:
             st.info("Downloading files...")
 
-            # Download training data
             train_csv_path = "logs.csv"
             download_from_gdrive(train_file_id, train_csv_path)
 
-            # Load dataset
             df = pd.read_csv(train_csv_path).dropna()
 
-            # Encode categorical variables
             label_encoders = {}
             categorical_features = ['host.ip', 'host.name', 'log.level']
 
@@ -124,13 +112,10 @@ if st.button("Run Model"):
                 df[col] = le.fit_transform(df[col])
                 label_encoders[col] = le  # Save encoder for future decoding
 
-            # Define features for anomaly detection
             anomaly_inputs = ['host.ip', 'host.name', 'log.level', 'log.level_num']
 
-            # Convert data to PyTorch tensor
             data_tensor = torch.tensor(df[anomaly_inputs].values, dtype=torch.float32)
 
-            # Check if the model weights file exists
             model_path = "isolation_forest_model.pth"
             if os.path.exists(model_path):
                 st.success("Loading existing model weights...")
@@ -142,21 +127,17 @@ if st.button("Run Model"):
                 model_IF.fit(data_tensor)
                 joblib.dump(model_IF.model, model_path)
 
-            # Apply anomaly detection
             df['anomaly_scores'] = model_IF.forward(data_tensor).numpy()
             df['anomaly'] = model_IF.predict(data_tensor).numpy()
 
-            # Download test data
             test_csv_path = "test_logs.csv"
             download_from_gdrive(test_file_id, test_csv_path)
 
-            # Run the test
             result_file = test_from_csv(test_csv_path, model_IF, label_encoders)
 
             if result_file:
                 st.success("Processing complete! Click below to download the results.")
 
-                # Provide download link for result file
                 with open(result_file, "rb") as file:
                     st.download_button(
                         label="📥 Download Test Results",
