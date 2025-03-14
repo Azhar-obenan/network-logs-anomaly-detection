@@ -14,7 +14,6 @@ def extract_drive_id(url):
     match = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
     return match.group(1) if match else None
 
-# Function to download Google Sheets as CSV
 def download_from_gdrive(file_id, output_path):
     if file_id:
         gdrive_url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv"
